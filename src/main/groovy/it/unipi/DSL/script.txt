@@ -1,56 +1,16 @@
-
 RIPEAtlas {
-    obtain ping_list
-    from probes
+    obtain traceroute_list
+    from anchors
     to anchors
-    limit 1000 on sources
-    limit 1000 on targets
+    limit 5 on sources
+    limit 5 on targets
     source_country "IT"
-    target_country "DE"
+    target_country "DE" 
     verbose on
-    cache on
+    cache off
     timeframe "2022-01-01 00:00:00",start
     timeframe "2022-05-30 00:00:00",stop
     execute()
 }
 
-/* RIPEAtlas {
-    obtain ping_list
-    from probes
-    to probes
-    limit 1000 on sources
-    limit 1000 on targets
-    frequency periodic
-    target_coordinates 50.450001, 30.523333 radius 29
-    source_coordinates 55.751244, 37.618423 radius 22
-    verbose on
-    cache on
-    timeframe "2022-01-01 00:00:00",start
-    timeframe "2022-05-30 00:00:00",stop
-    execute()
-}
-*/
-/*
-show {
-    obtain avg_ping
-    from anchors
-    cache on
-    city "Berlin"
-    source_coordinates 52.520008,13.404954 radius 22
-    limit 1 for measurements
-    limit 10 for destinations
-    timeframe 1566228464,start
-    timeframe 1566228470,stop
-    execute()
-}
-*/
-/*
-source_longitude 13.0,min
-    source_longitude 14.0,max
-    source_latitude 52.0,min
-    source_latitude 53.0,max
-    destination_longitude 13.0,min
-    destination_longitude 14.0,max
-    destination_latitude 52.0,min
-    destination_latitude 53.0,max
-*/
+ // aggiungere costanti per lo statuts

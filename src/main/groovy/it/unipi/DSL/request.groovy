@@ -1,7 +1,9 @@
 package it.unipi.DSL
+
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import java.text.SimpleDateFormat
+
 
 class request {
 
@@ -15,10 +17,15 @@ class request {
         Integer id
         Integer start_time
         String target_ip
-        measItems(Integer i, Integer s, String t){
+        String status
+        Integer stop_time
+        measItems(Integer i, Integer s,Integer sp,String st, String t){
             id = i
             start_time = s
+            stop_time = sp
             target_ip = t
+            status = st
+           
         }
     }
     class sourceData{ //struttura per recuperare dati su source probes
@@ -32,7 +39,7 @@ class request {
     class container {
         List<pingList> data = new LinkedList<>()
     }
-    class pingList{ // struttura per il salvataggio di una lista di ping
+    class pingList{ // struttura per il salvataggio di una lista di ping; potremmo aggiungere altre misurazioni oltre a quella media e altre informazioni sul ping
         String data
         Double ping
         pingList (String i, Double d){
@@ -43,6 +50,58 @@ class request {
             this.data = d.data
             this.ping = d.ping
         }
+    }
+    class containerT{
+        List<tracerouteList> data = new LinkedList<>()
+    }
+
+    class responseTrace{
+        String ipresponse
+        Double ttl 
+        Integer size
+        Double rtt 
+        String x
+       responseTrace (String ip, Double t, Integer s, Double r){
+            ipresponse = ip
+            ttl = t 
+            size = s 
+            rtt = r
+        }
+
+        responseTrace (String e){
+            x = e
+        }
+
+    }
+
+    class hop {
+        Integer hop
+        List<responseTrace> risposte 
+
+        hop (Integer h, List<responseTrace> l){
+            hop = h
+            risposte = l
+        }
+    }
+
+
+
+    
+    class tracerouteList{ // struttura per il salvataggio di una lista di ping; potremmo aggiungere altre misurazioni oltre a quella media e altre informazioni sul ping
+      
+        String data
+        String ipsource
+        String iptarget
+        List<hop> list_route
+        tracerouteList (String d,String ips, String ipt, List<hop> l){
+
+           data = d
+           ipsource = ips
+           iptarget = ipt
+           list_route = l
+            
+        }
+      
     }
 
     boolean cache_on = true
@@ -185,7 +244,7 @@ class request {
     void obtain(String r){
         reqF = r
     }
-    synchronized String sendRequestWithCacheCheck(String url2, StringBuilder bres){
+    synchronized String sendRequestWithCacheCheck(String url2, StringBuilder bres){ // bres: contiene un StringBuilder per costruire il vettore di stringhe di risultati
         String res
         if (debug) println("creo thread")
         Cache c = new Cache(this)
@@ -196,7 +255,7 @@ class request {
                 c.setParam(url2,get.getInputStream(),bres)
                 if (debug) println("faccio partire thread")
                 c.start()
-                wait(wait*1000)
+                wait(wait*1000)// non capisco cosa sia e da dove esce
                 if (!c.getDone()){
                     if (debug) println("file risultati per "+url2+" troppo grosso, interrompo")
                     c.interrupt()
@@ -209,6 +268,7 @@ class request {
                 else{
                     if (debug) println("tutto ok")
                     res = bres.toString()
+                   // println("Sono in srwcc"+res)
                 }
             }
             else{
@@ -228,7 +288,7 @@ class request {
         String url2 = "https://atlas.ripe.net/api/v2/probes/?format=json&status_name=Connected"
         if (s.equals("source")){
             if ((sLat != 0 || sLon != 0) && sRad != 0) url2+= "&radius="+sLat+","+sLon+":"+sRad
-            else if (sCountry != null) url2+="&country_code="+sCountry
+            else if (sCountry != null) url2+="&country_code="+sCountry // il controllo sulle nazioni e` gia presente
             if (fromWhat.equals("anchors")) url2+="&is_anchor=true"
         }
         else if (s.equals("dest")){
@@ -238,6 +298,7 @@ class request {
         }
         if (debug) println(url2)
         res = sendRequestWithCacheCheck(url2,bres)
+        //println("sono in getIps"+res)
         if (res.equals("errore") || res.equals("")){
             return
         }
@@ -304,6 +365,7 @@ class request {
         String res
         StringBuilder bres = new StringBuilder()
         ListIterator<String> ipIter
+        Integer count_tot = 0
         if (targetIps != null){ //do la precedenza ai targetIps se sono stati settati dall'utente
             ipIter = targetIps.listIterator()
         }
@@ -317,23 +379,47 @@ class request {
                 url2+="&is_oneoff=false"
             }
             if (type != null) url2+="&type="+type
-            if (time_start != 0) url2+="&start_time__gte="+time_start
-            if (time_stop != 0) url2+="&stop_time__lte="+time_stop
+
+            if (time_stop !=0) {
+                url2+="&start_time__lt="+time_stop // deve controllare anche i measurement che sono partiti prima di time_start
+                url2+="&status=Ongoing,Stopped"
+            }
+            //if (time_stop != 0) url2+="&stop_time__lte="+time_stop+"&stop_time__gte="+time_start // ma lo stop time deve essere comunque nell' interevallo
             res = sendRequestWithCacheCheck(url2,bres)
+            println("sono in getMeas: "+url2)
             if (res.equals("errore") || res.equals("")){
                 continue
             }
             def object = jsonSlurper.parseText(res)
+            if(debug)println("numero di Meas trovati in totale: "+object.count)
             if(object.count != 0){
                 int count = 0
                 while (count < meas_limit){
                     for(int j = 0; j < object.results.size() && count < meas_limit;j++){
-                        measItems m = new measItems(object.results[j].id,object.results[j].start_time,object.results[j].target_ip)
-                        if (debug) println("adding id: "+object.results[j].id+" -- start_time: "+object.results[j].start_time)
-                        meas.add(m)
-                        count++
-                        if (debug) println("numMeas: "+(count))
-                    }
+
+                          if(object.results[j].status.name == "Stopped" && time_start!=0 && time_stop!=0){  
+                                                      
+                                    if(object.results[j].stop_time >= time_start || object.results[j].status.when >= time_start){ // l'importante e` che il mesaurement si fermi dopo il time start
+                                        measItems m = new measItems(object.results[j].id,object.results[j].start_time,object.results[j].stop_time,object.results[j].target_ip,object.results[j].status.name)
+                                        if (debug) println("adding id: "+object.results[j].id+" -- start_time: "+object.results[j].start_time+" -- stop_time: "+object.results[j].stop_time+" -- status: "+object.results[j].status.name)
+                                        meas.add(m)
+                                        count++
+                                        count_tot++
+                                        if (debug) println("numMeas: "+(count))
+                                    }else{
+                                        if (debug) println("not adding id: "+object.results[j].id+" -- start_time: "+object.results[j].start_time+" -- stop_time: "+object.results[j].stop_time+" -- status: "+object.results[j].status.name)
+                                    }
+                                }
+                            else {
+                                measItems m = new measItems(object.results[j].id,object.results[j].start_time,object.results[j].stop_time,object.results[j].target_ip,object.results[j].status.name)
+                                if (debug) println("adding id: "+object.results[j].id+" -- start_time: "+object.results[j].start_time+" -- stop_time: "+object.results[j].stop_time+" -- status: "+object.results[j].status.name)
+                                meas.add(m)
+                                count++
+                                count_tot++
+                                if (debug) println("numMeas: "+(count))
+                            }
+                        }
+                    
                     if (count >= meas_limit) break
                     if (object.next != null){ //vado alla prossima pagina di risultati
                         bres = new StringBuilder()
@@ -348,6 +434,7 @@ class request {
                 }
             }
         }//get a measurement for each ip
+        if(debug) println("Measurement totali: "+count_tot)
     }
 
     Double getAvgPing(LinkedList<?> p, LinkedList<?> s) {
@@ -379,7 +466,7 @@ class request {
             }
             if (time_start != 0 && time_start > m.start_time) url2 = url2 + "&start=" + time_start
             else url2 = url2 + "&start=" + m.start_time
-            if (time_stop != 0 && time_stop > m.start_time) url2 = url2 + "&stop=" + time_stop
+           if (time_stop != 0 && time_stop > m.start_time) url2 = url2 + "&stop=" + time_stop
             else url2 = url2 + "&stop=" + (m.start_time+1)
             if (debug) println(url2)
             res = sendRequestWithCacheCheck(url2,bres)
@@ -438,15 +525,16 @@ class request {
             }
             if (time_start != 0 && time_start > m.start_time) url2 = url2 + "&start=" + time_start
             else url2 = url2 + "&start=" + m.start_time
-            if (time_stop != 0 && time_stop > m.start_time) url2 = url2 + "&stop=" + time_stop
+             if (time_stop != 0 && time_stop > m.start_time) url2 = url2 + "&stop=" + time_stop
             else url2 = url2 + "&stop=" + (m.start_time+1)
             if (debug) println(url2)
             res = sendRequestWithCacheCheck(url2,bres)
+           // println("Sono dopo srwcc in PingList:"+res)
             if (res.equals("errore") || res.equals("")){
                 continue
             }
             def object = jsonSlurper.parseText(res)
-            if (debug) println(object.size())
+            if (debug) println("Size: "+object.size())
             if(object.size() != 0){
                 for (int j = 0; j < object.size(); j++){
                     while (sipsIt.hasNext()){
@@ -465,6 +553,76 @@ class request {
             }
         }
     }
+
+   void getTracerouteList(LinkedList<?> p, LinkedList<?> s, containerT c){
+        if (p.isEmpty()){
+            if (debug) println("Non ci sono measurements")
+            return
+        }
+        if (s.isEmpty()){
+            if (debug) println("Non ci sono ip di probe source")
+            return
+        }
+        if (debug) println("start of results")
+        StringBuilder bres
+        String res
+        ListIterator<measItems> measIt = p.listIterator()
+        ListIterator<sourceData> sipsIt = s.listIterator()
+        def jsonSlurper = new JsonSlurper()
+        for (int i = 0; i < p.size(); i++){
+            bres = new StringBuilder()
+            measItems m = measIt.next()
+            String url2 = "https://atlas.ripe.net/api/v2/measurements/"+m.id+"/results/?format=json&probe_ids="
+            sipsIt = s.listIterator()
+            while (sipsIt.hasNext()){
+                sourceData tmp = sipsIt.next()
+                url2+=tmp.id
+                if (sipsIt.hasNext()) url2+=","
+            }
+            if (time_start != 0 && time_start > m.start_time) url2 = url2 + "&start=" + time_start
+            else url2 = url2 + "&start=" + m.start_time
+             if (time_stop != 0 && time_stop > m.start_time) url2 = url2 + "&stop=" + time_stop
+            else url2 = url2 + "&stop=" + (m.start_time+1)
+            if (debug) println(url2)
+            res = sendRequestWithCacheCheck(url2,bres)
+           // println("Sono dopo srwcc in PingList:"+res)
+            if (res.equals("errore") || res.equals("")){
+                continue
+            }
+            def object = jsonSlurper.parseText(res)
+            if (debug) println("Size: "+object.size())
+             if(object.size() != 0){
+                for (int j = 0; j < object.size(); j++){
+                    while (sipsIt.hasNext()){
+                        sourceData tmp = sipsIt.next()
+                        List<hop> lista_hop = new LinkedList<>()
+                         for(int k = 0;k<object[j].result.size();k++){
+                             List<responseTrace> risposte = new LinkedList<>()
+       
+                            for(int l = 0;l<3;l++){
+                                if(object[j].result[k].result[l].x != null){
+                                    risposte.add(new responseTrace(object[j].result[k].result[l].x))
+                                } else
+                                {
+                                    risposte.add(new responseTrace(object[j].result[k].result[l].from,object[j].result[k].result[l].ttl,object[j].result[k].result[l].size,object[j].result[k].result[l].rtt))
+                                }
+                            }
+                            lista_hop.add(new hop(object[j].result[k].hop,risposte))
+
+                         }
+                         Date date = new Date((long)object[j].timestamp*1000)
+                         Calendar calendar = Calendar.getInstance()
+                         calendar.setTime(date)
+                         c.data.add((new tracerouteList(""+calendar.get(calendar.DAY_OF_MONTH)+"/"+calendar.get(calendar.MONTH)+"/"+calendar.get(calendar.YEAR),object[j].src_addr,object[j].dst_addr,lista_hop)))
+                        if (debug) println("id of measurement: "+m.id)
+                        break
+                    }
+                    sipsIt = s.listIterator()
+                }
+            }
+        }
+    }
+    
 
     void id(int i){
         id = i
@@ -488,7 +646,7 @@ class request {
             getMeas(measIds, destProbesIps, "ping")
             container c = new container()
             getPingList(measIds, sourceProbesIps, c)
-            FileWriter f = new FileWriter("results.txt", true)
+            FileWriter f = new FileWriter("resultsPing_list.txt", true) // semplice salvataggio dei risultati in file diversi o aggiungere separatori per le varie misurazioni e tipologie
             String towrite = JsonOutput.toJson(c.data)
             f.write(towrite)
             f.close()
@@ -499,8 +657,20 @@ class request {
             if (debug) println("sources")
             getIps(sourceProbesIps, "source")
             getMeas(measIds, destProbesIps, null)
-            FileWriter f = new FileWriter("results.txt", true)
+            FileWriter f = new FileWriter("resultsmeasuremnt_list.txt", true)
             String towrite = JsonOutput.toJson(measIds)
+            f.write(towrite)
+            f.close()
+        } else if (reqF.equals("traceroute_list")){
+            if (debug) println("targets")
+            getIps(destProbesIps, "dest")
+            if (debug) println("sources")
+            getIps(sourceProbesIps, "source")
+            getMeas(measIds, destProbesIps, "traceroute")
+            containerT c = new containerT()
+            getTracerouteList(measIds, sourceProbesIps, c)
+            FileWriter f = new FileWriter("resultsTraceroute_list.txt", true) // semplice salvataggio dei risultati in file diversi o aggiungere separatori per le varie misurazioni e tipologie
+            String towrite = JsonOutput.toJson(c.data)
             f.write(towrite)
             f.close()
         }
