@@ -23,12 +23,15 @@ class Cache extends Thread{
     boolean getSave(){
         return save
     }
-    long index = 0 //indice che tiene conto del punto dove troncare file
+    int index = 0 //indice che tiene conto del punto dove troncare file
     //in caso di annullamento del trasferimento
     void sendRequest(String name, InputStream content, StringBuilder ret){
+        int count_open_square = 0
+        int count_open_brace = 0
         try{
             int counter = 0
             boolean insidesquare = false
+           
             MessageDigest md = MessageDigest.getInstance("MD5")
             md.update(name.getBytes())
             byte[] digest = md.digest()
@@ -53,13 +56,16 @@ class Cache extends Thread{
             while (read>0 && !isInterrupted()){
                  for (int i = 0; i < read; i++){
                         if (tmp[i] == '['){
-                            insidesquare = true
+                            count_open_square++
+                            
                         }// devo controllare di non trovarmi dentro il campo "results"...
                         if (tmp[i] == ']'){
-                            insidesquare = false
+                            count_open_square--
                         }//...al momento del troncamento
-                        if (tmp[i] == '}' && !insidesquare){
+                 
+                        if (tmp[i] == '}' && count_open_square==1){
                             index = counter+1
+
                         }
                         counter++
                     }
@@ -78,7 +84,7 @@ class Cache extends Thread{
         catch (InterruptedException e){
             if (r.isDebugOn()) println("salvo il possibile")
             String tosave = sb.toString()
-            tosave = tosave.substring(0,(int)index)
+            tosave = tosave.substring(0,index)         
             tosave+="]"
             sb.delete(0,sb.length())
             sb.append(tosave)

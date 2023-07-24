@@ -2,8 +2,10 @@ RIPEAtlas {
     obtain traceroute_list
     from anchors
     to anchors
-    limit 5 on sources
-    limit 5 on targets
+    limit 1 on targets
+    limit 1 on sources
+    limit 50 on results
+    coordinate on
     source_country "IT"
     target_country "DE" 
     verbose on
@@ -12,5 +14,3 @@ RIPEAtlas {
     timeframe "2022-05-30 00:00:00",stop
     execute()
 }
-
- // aggiungere costanti per lo statuts
