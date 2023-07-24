@@ -309,7 +309,7 @@ class request {
                 if (debug) println("faccio partire thread")
                 c.start()
                // if(wait_set){
-                    if(debug) println("Wait set")
+                   
                     wait(wait_t*1000)
                /* }
                 else{
@@ -406,7 +406,7 @@ class request {
                     object = jsonSlurper.parseText(res)
                 }
                 else {
-                    if (debug) println("numero risultati trovati per "+s+" minore del limite imposto")
+                    if (debug && (target_limit!=0 || source_limit!=0)) println("numero risultati trovati per "+s+" minore del limite imposto")
                     break
                 }
             }
@@ -490,7 +490,7 @@ class request {
                         object = jsonSlurper.parseText(res)
                     }
                     else {
-                        if (debug) println("numero di measurements trovati è inferiore al limite imposto")
+                        if (debug && meas_limit!=0)  println("numero di measurements trovati è inferiore al limite imposto")
                         break
                     }
                 }
@@ -683,7 +683,7 @@ class request {
                    if(limit>res_limit)
                         limit = res_limit
                 } 
-                while(count<limit){
+                
                     for (int j = 0; j < object.size() && count<limit; j++){
                         while (sipsIt.hasNext()){
                             sourceData tmp = sipsIt.next()
@@ -695,10 +695,11 @@ class request {
                             List<hop> lista_hop = new LinkedList<>()
 
 
-                            if(star_limit!=0 && object[j].result.size()>star_limit){
+                            if(hop_limit!=0 && object[j].result.size()>hop_limit){
                                 if(debug) println("Il numero di hop supera il limite imposto:"+object[j].result.size())
                                 break
                             }
+
                             for(int k = 0;k<object[j].result.size();k++){
                                 List<responseTrace> risposte = new LinkedList<>()
                                 star = false
@@ -711,17 +712,17 @@ class request {
                                         risposte.add(new responseTrace(object[j].result[k].result[l].from,object[j].result[k].result[l].ttl,object[j].result[k].result[l].size,object[j].result[k].result[l].rtt))
                                     }
                                 }
-                                 if(star_limit!=0 && star == true){
+                                if(star_limit!=0 && star == true){
                                     count_star++
-                                }
+                                } 
 
                                if(!star && asn_on){
                                     StringBuilder bres2 = new StringBuilder()
                                     String urlAS = "https://stat.ripe.net/data/prefix-overview/data.json?resource="+object[j].result[k].result[0].from
                                     String res_as = sendRequestWithCacheCheck(urlAS,bres2)
                                     if(res_as.equals("errore")||res_as.equals(""))
-                                        asn_on = false
-                                    {
+                                       asn = -2
+                                    else{
                                         def asn_obj = jsonSlurper.parseText(res_as)
                                         String str_tmp = asn_obj.data.asns.asn
                                         if(str_tmp.equals("[]")){
@@ -739,30 +740,44 @@ class request {
                                     StringBuilder bres2 = new StringBuilder()
                                     String urlCOOR ="https://stat.ripe.net/data/maxmind-geo-lite/data.json?resource="+object[j].result[k].result[0].from
                                     String res_coor = sendRequestWithCacheCheck(urlCOOR,bres2)
-                                    if(res_coor.equals("errore")||res_coor.equals(""))
-                                        coordinate_on = false
-                                    else{                                    def coor_obj = jsonSlurper.parseText(res_coor)
+                                    if(res_coor.equals("errore")||res_coor.equals("")){
+                                        lat = Double.NaN 
+                                        lon = Double.NaN
+                                    }
+                                    else{                                    
+                                        def coor_obj = jsonSlurper.parseText(res_coor)
                                         String str_tmp = coor_obj.data.located_resources.locations.longitude
-                                        str_tmp = str_tmp.replace('[','')
-                                        str_tmp = str_tmp.replace('[','')
-                                        str_tmp = str_tmp.replace(']','')
-                                        str_tmp = str_tmp.replace(']','')
-                                        lon = Double.parseDouble(str_tmp)
+                                        if(str_tmp.equals("[]")){
+                                            lon = Double.NaN
+                                        }else{
+                                            str_tmp = str_tmp.replace('[','')
+                                            str_tmp = str_tmp.replace('[','')
+                                            str_tmp = str_tmp.replace(']','')
+                                            str_tmp = str_tmp.replace(']','')
+                                            lon = Double.parseDouble(str_tmp)
+                                        }
+                                        
                                         str_tmp = coor_obj.data.located_resources.locations.latitude
-                                        str_tmp = str_tmp.replace('[','')
-                                        str_tmp = str_tmp.replace('[','')
-                                        str_tmp = str_tmp.replace(']','')
-                                        str_tmp = str_tmp.replace(']','')
-                                        lat = Double.parseDouble(str_tmp)
+                                        if(str_tmp.equals("[]")){
+                                            lon = Double.NaN
+                                        }else{
+                                            str_tmp = str_tmp.replace('[','')
+                                            str_tmp = str_tmp.replace('[','')
+                                            str_tmp = str_tmp.replace(']','')
+                                            str_tmp = str_tmp.replace(']','')
+                                            lat = Double.parseDouble(str_tmp)
+                                        }
                                     }
                                     
                                 }
+
+                                println("ASN:"+asn)
                                 
-                                if(coordinate_on && asn_on)
+                                if(coordinate_on && asn_on && !Double.isNaN(lat) && !Double.isNaN(lon) && asn != -2) 
                                     lista_hop.add(new hop(object[j].result[k].hop,risposte,asn,lon,lat))
-                                else if(coordinate_on && !asn_on)
+                                else if(coordinate_on && !asn_on  && !Double.isNaN(lat) && !Double.isNaN(lon))
                                     lista_hop.add(new hop(object[j].result[k].hop,risposte,lon,lat))
-                                else if(!coordinate_on && asn_on)
+                                else if(!coordinate_on && asn_on && asn != -2)
                                     lista_hop.add(new hop(object[j].result[k].hop,risposte,asn))
                                 else            
                                     lista_hop.add(new hop(object[j].result[k].hop,risposte))
@@ -786,7 +801,7 @@ class request {
                        
                         if(count>=limit)break
                     }
-                }
+                
             }
         }
     }
