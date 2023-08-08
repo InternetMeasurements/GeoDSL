@@ -85,7 +85,8 @@ class Cache extends Thread{
             if (r.isDebugOn()) println("salvo il possibile")
             String tosave = sb.toString()
             tosave = tosave.substring(0,index)         
-            tosave+="]"
+            if(index!=0)
+                tosave+="]"
             sb.delete(0,sb.length())
             sb.append(tosave)
             if (r.isCacheOn()){

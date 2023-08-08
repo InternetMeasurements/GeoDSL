@@ -2,10 +2,11 @@ RIPEAtlas {
     obtain traceroute_list
     from anchors
     to anchors
-    limit 1 on targets
-    limit 1 on sources
+    limit 3 on measurements
+    limit 10 on targets
+    limit 10 on sources
     limit 50 on results
-    coordinate on
+    filter hop that ">=" of 3    
     source_country "IT"
     target_country "DE" 
     verbose on

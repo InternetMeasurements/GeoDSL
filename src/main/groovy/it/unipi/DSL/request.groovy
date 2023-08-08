@@ -196,6 +196,7 @@ class request {
     int res_limit = 0 
     int star_limit = 0
     int hop_limit = 0
+    String segno_filtro = ""
     //raggio e coordinate di source e target
     Integer dRad = 0
     Integer sRad = 0
@@ -216,6 +217,7 @@ class request {
     def to = {what->
         toWhat = what
     }
+
     def limit(n) {
         [on: {String s ->
             switch (s){
@@ -231,13 +233,26 @@ class request {
                 case "results":
                     res_limit = n
                     break
-                case "hop":
-                    hop_limit = n
+               
+            }
+        }]
+       
+
+    }
+
+  def filter(n) {
+        [that: {String sign->[of:{Integer v ->
+            switch (n){
+               case "hop":
+                    hop_limit = v
                     break
                 case "star":
-                    star_limit = n 
+                    star_limit = v 
                     break
             }
+
+            segno_filtro = sign
+        }]
         }]
     }
 
@@ -308,14 +323,9 @@ class request {
                 c.setParam(url2,get.getInputStream(),bres)
                 if (debug) println("faccio partire thread")
                 c.start()
-               // if(wait_set){
-                   
+               
                     wait(wait_t*1000)
-               /* }
-                else{
-                    if(debug) println("Wait unset")
-                    wait()
-                }*/
+              
                 if (!c.getDone()){
                     if (debug) println("file risultati per "+url2+" troppo grosso, interrompo")
                     c.interrupt()
@@ -337,6 +347,35 @@ class request {
         }
         else res = bres.toString()
         return res
+    }
+
+    boolean comparazione(String segno,Integer valore1,Integer valore2){
+        switch(segno){
+            case "<":
+                return valore1<valore2?true:false
+                break
+            case "<=":
+                return valore1<=valore2?true:false
+                break
+            case ">":
+                return valore1>valore2?true:false
+                break
+            case ">=":
+                return valore1>=valore2?true:false
+                break
+            case "=": case "":case " ":
+                return valore1==valore2?true:false
+                break
+            case "!=":
+                return valore1!=valore2?true:false
+                break
+            default :
+                {
+                println("Segno non valido")
+                return true
+                }
+                
+        }
     }
 
     void getIps(LinkedList<?> p, String s){//recupera indirizzi e id delle probes che rispettano le specifiche
@@ -695,8 +734,8 @@ class request {
                             List<hop> lista_hop = new LinkedList<>()
 
 
-                            if(hop_limit!=0 && object[j].result.size()>hop_limit){
-                                if(debug) println("Il numero di hop supera il limite imposto:"+object[j].result.size())
+                            if(hop_limit!=0 && !comparazione(segno_filtro,object[j].result.size(),hop_limit)){
+                                if(debug) println("Il numero di hop non rispetta il filtraggio richiesto :"+object[j].result.size())
                                 break
                             }
 
@@ -771,7 +810,7 @@ class request {
                                     
                                 }
 
-                                println("ASN:"+asn)
+                               
                                 
                                 if(coordinate_on && asn_on && !Double.isNaN(lat) && !Double.isNaN(lon) && asn != -2) 
                                     lista_hop.add(new hop(object[j].result[k].hop,risposte,asn,lon,lat))
@@ -784,8 +823,8 @@ class request {
 
                             }
 
-                            if(count_star>star_limit && star_limit!=0){
-                                if(debug)println("Il numero di star supera il limite imposto:+"+count_star)
+                            if(!comparazione(segno_filtro,count_star,star_limit) && star_limit!=0){
+                                if(debug)println("Il numero di star non rispetta il filtraggio richiesto :"+count_star)
                                 break
                             } 
 
