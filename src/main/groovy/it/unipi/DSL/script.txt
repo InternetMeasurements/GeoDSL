@@ -2,11 +2,37 @@ RIPEAtlas {
     obtain traceroute_list
     from anchors
     to anchors
-    limit 3 on measurements
-    limit 10 on targets
-    limit 10 on sources
+    limit 1 on measurements 
+    limit 5 on targets 
+    limit 5 on sources
+    limit 20 on results
+    filter star that "<=" of 0
+    coordinate on
+    asn on 
+    source_country "IT"
+    target_country "DE" 
+    verbose on
+    cache off
+    timeframe "2023-01-01 00:00:00",start
+    timeframe "2023-08-27 00:00:00",stop
+
+    execute()
+}
+
+
+
+
+
+/*RIPEAtlas {
+    obtain traceroute_list
+    from anchors
+    to anchors
+    limit 10 on measurements
+    limit 1 on targets
+    limit 1 on sources
     limit 50 on results
-    filter hop that ">=" of 3    
+    filter hop that ">=" of 3  
+    coordinate on  
     source_country "IT"
     target_country "DE" 
     verbose on
@@ -14,4 +40,4 @@ RIPEAtlas {
     timeframe "2022-01-01 00:00:00",start
     timeframe "2022-05-30 00:00:00",stop
     execute()
-}
+}*/

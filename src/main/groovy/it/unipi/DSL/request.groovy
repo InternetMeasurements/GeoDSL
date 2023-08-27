@@ -194,8 +194,8 @@ class request {
     int meas_limit = 0 // numero massimo di measurment
     int target_limit = 0// massimo numero di probes
     int res_limit = 0 
-    int star_limit = 0
-    int hop_limit = 0
+    int star_limit = -1
+    int hop_limit = -1
     String segno_filtro = ""
     //raggio e coordinate di source e target
     Integer dRad = 0
@@ -252,7 +252,7 @@ class request {
             }
 
             segno_filtro = sign
-        }]
+            }]
         }]
     }
 
@@ -709,7 +709,7 @@ class request {
             else url2 = url2 + "&stop=" + (m.start_time+1)
             if (debug) println(url2)
             res = sendRequestWithCacheCheck(url2,bres)
-          ///  println("Sono dopo srwcc in PingList:"+res)
+        
             if (res.equals("errore") || res.equals("")){
                 continue
             }
@@ -734,7 +734,7 @@ class request {
                             List<hop> lista_hop = new LinkedList<>()
 
 
-                            if(hop_limit!=0 && !comparazione(segno_filtro,object[j].result.size(),hop_limit)){
+                            if(hop_limit>=0 && !comparazione(segno_filtro,object[j].result.size(),hop_limit)){
                                 if(debug) println("Il numero di hop non rispetta il filtraggio richiesto :"+object[j].result.size())
                                 break
                             }
@@ -745,13 +745,13 @@ class request {
                                 for(int l = 0;l<3;l++){
                                     if(object[j].result[k].result[l].x != null){
                                         risposte.add(new responseTrace(object[j].result[k].result[l].x))
-                                        if(star_limit!=0 || asn_on || coordinate_on)star == true
+                                        if(star_limit>=0 || asn_on || coordinate_on) star = true
                                     } else
                                     {
                                         risposte.add(new responseTrace(object[j].result[k].result[l].from,object[j].result[k].result[l].ttl,object[j].result[k].result[l].size,object[j].result[k].result[l].rtt))
                                     }
                                 }
-                                if(star_limit!=0 && star == true){
+                                if(star_limit>=0 && star == true){
                                     count_star++
                                 } 
 
@@ -823,7 +823,7 @@ class request {
 
                             }
 
-                            if(!comparazione(segno_filtro,count_star,star_limit) && star_limit!=0){
+                            if(!comparazione(segno_filtro,count_star,star_limit) && star_limit>=0){
                                 if(debug)println("Il numero di star non rispetta il filtraggio richiesto :"+count_star)
                                 break
                             } 
