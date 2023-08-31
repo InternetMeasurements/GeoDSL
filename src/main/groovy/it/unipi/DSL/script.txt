@@ -1,11 +1,11 @@
 RIPEAtlas {
-    obtain traceroute_list
+    obtain ping_list
     from anchors
     to anchors
     limit 1 on measurements 
-    limit 5 on targets 
-    limit 5 on sources
-    limit 20 on results
+    limit 1 on targets 
+    limit 1 on sources
+    limit 2 on results
     filter star that "<=" of 0
     coordinate on
     asn on 
@@ -13,7 +13,7 @@ RIPEAtlas {
     target_country "DE" 
     verbose on
     cache off
-    timeframe "2023-01-01 00:00:00",start
+    timeframe "2023-02-05 00:00:00",start
     timeframe "2023-08-27 00:00:00",stop
 
     execute()

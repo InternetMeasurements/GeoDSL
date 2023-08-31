@@ -661,9 +661,11 @@ class request {
                             sourceData tmp = sipsIt.next()
                             if (Double.valueOf(object[j].avg) > 0) {
                                 Date date = new Date((long)object[j].timestamp*1000)
+                                
                                 Calendar calendar = Calendar.getInstance()
                                 calendar.setTime(date)
-                                c.data.add((new pingList(""+calendar.get(calendar.DAY_OF_MONTH)+"/"+calendar.get(calendar.MONTH)+"/"+calendar.get(calendar.YEAR),object[j].avg)))
+                                int mese = calendar.get(calendar.MONTH)+1
+                                c.data.add((new pingList(""+calendar.get(calendar.DAY_OF_MONTH)+"/"+mese+"/"+calendar.get(calendar.YEAR),object[j].avg)))
                                 count++
                                 if (debug) println("id of measurement: "+m.id+", result: "+Double.valueOf(object[j].avg))
                             }
@@ -832,7 +834,8 @@ class request {
                             Date date = new Date((long)object[j].timestamp*1000)
                             Calendar calendar = Calendar.getInstance()
                             calendar.setTime(date)
-                            c.data.add((new tracerouteList(""+calendar.get(calendar.DAY_OF_MONTH)+"/"+calendar.get(calendar.MONTH)+"/"+calendar.get(calendar.YEAR),object[j].src_addr,object[j].dst_addr,lista_hop)))
+                            int mese = calendar.get(calendar.MONTH)+1
+                            c.data.add((new tracerouteList(""+calendar.get(calendar.DAY_OF_MONTH)+"/"+calendar.get(calendar.MONTH+1)+"/"+calendar.get(calendar.YEAR),object[j].src_addr,object[j].dst_addr,lista_hop)))
                             if (debug) println("id of measurement: "+m.id)
                             break
                         }
