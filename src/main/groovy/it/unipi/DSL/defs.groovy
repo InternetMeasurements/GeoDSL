@@ -1,6 +1,7 @@
 package it.unipi.DSL
 class defs{
     final String avg_ping = "avg_ping"
+    final String traceroute_list = "traceroute_list"
     final String one_off = "one_off"
     final String max = "max"
     final String min = "min"
@@ -9,7 +10,12 @@ class defs{
     final String measurements = "measurements"
     final String probes = "probes"
     final String anchors = "anchors"
+    final String results = "results"
+    final String hop = "hop"
+    final String star = "star"
+    final String of = "of"
     final String on = "on"
+    final String that = "that"
     final String off = "off"
     final String sources = "sources"
     final String targets = "targets"

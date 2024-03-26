@@ -1,7 +1,10 @@
 package it.unipi.DSL
+
 import groovy.json.JsonOutput
+import groovy.json.JsonGenerator
 import groovy.json.JsonSlurper
 import java.text.SimpleDateFormat
+
 
 class request {
 
@@ -15,10 +18,15 @@ class request {
         Integer id
         Integer start_time
         String target_ip
-        measItems(Integer i, Integer s, String t){
+        String status
+        Integer stop_time
+        measItems(Integer i, Integer s,Integer sp,String st, String t){
             id = i
             start_time = s
+            stop_time = sp
             target_ip = t
+            status = st
+           
         }
     }
     class sourceData{ //struttura per recuperare dati su source probes
@@ -32,7 +40,7 @@ class request {
     class container {
         List<pingList> data = new LinkedList<>()
     }
-    class pingList{ // struttura per il salvataggio di una lista di ping
+    class pingList{ // struttura per il salvataggio di una lista di ping; potremmo aggiungere altre misurazioni oltre a quella media e altre informazioni sul ping
         String data
         Double ping
         pingList (String i, Double d){
@@ -43,6 +51,84 @@ class request {
             this.data = d.data
             this.ping = d.ping
         }
+    }
+    class containerT{
+        List<tracerouteList> data = new LinkedList<>()
+    }
+
+    class responseTrace{
+        String ipresponse
+        Double ttl 
+        Integer size
+        Double rtt 
+        String x
+       responseTrace (String ip, Double t, Integer s, Double r){
+            ipresponse = ip
+            ttl = t 
+            size = s 
+            rtt = r
+        }
+
+        responseTrace (String e){
+            x = e
+        }
+
+    }
+
+    class hop {
+        Integer hop
+        Integer asn
+        Double lon 
+        Double lat
+        List<responseTrace> risposte 
+
+        hop (Integer h, List<responseTrace> l,Integer a,Double lo,Double la){
+            hop = h
+            risposte = l
+            asn = a
+            lon = lo
+            lat = la
+        }
+
+        hop (Integer h, List<responseTrace> l,Integer a){
+            hop = h
+            risposte = l
+            asn = a
+        }
+
+        hop (Integer h, List<responseTrace> l,Double lo,Double la){
+            hop = h
+            risposte = l
+            lon = lo
+            lat = la
+        }
+
+
+        hop (Integer h, List<responseTrace> l){
+            hop = h
+            risposte = l
+           
+        }
+    }
+
+
+
+    
+    class tracerouteList{ // struttura per il salvataggio di una lista di ping; potremmo aggiungere altre misurazioni oltre a quella media e altre informazioni sul ping
+      
+        String data
+        String ipsource
+        String iptarget
+        List<hop> list_route
+        tracerouteList (String d,String ips, String ipt, List<hop> l){
+
+           data = d
+           ipsource = ips
+           iptarget = ipt
+           list_route = l
+            
+        }
+      
     }
 
     boolean cache_on = true
@@ -60,10 +146,12 @@ class request {
         }
 
     }
-    Integer wait = 10
-
+    Integer wait_t = 10
+    boolean wait_set = false
+    
     def max_wait = { Integer i -> //attesa massima per un risultato
-        wait = i
+        wait_t = i
+        wait_set = true
 
     }
     List<String> targetIps = null
@@ -102,9 +190,13 @@ class request {
     String fromWhat = null
     String toWhat = null
     int id = 0
-    int source_limit = 10
-    int meas_limit = 1
-    int target_limit = 10
+    int source_limit = 0  //  massimo numero di probes
+    int meas_limit = 0 // numero massimo di measurment
+    int target_limit = 0// massimo numero di probes
+    int res_limit = 0 
+    int star_limit = -1
+    int hop_limit = -1
+    String segno_filtro = ""
     //raggio e coordinate di source e target
     Integer dRad = 0
     Integer sRad = 0
@@ -114,6 +206,8 @@ class request {
     Double dLon = 0
     BigDecimal time_start = 0
     BigDecimal time_stop = 0
+    boolean asn_on = false
+    boolean coordinate_on = false
     String reqF = "" //operazione da eseguire sui dati
     boolean error = false
     def from = {what ->
@@ -123,6 +217,7 @@ class request {
     def to = {what->
         toWhat = what
     }
+
     def limit(n) {
         [on: {String s ->
             switch (s){
@@ -135,8 +230,40 @@ class request {
                 case "targets":
                     target_limit = n
                     break
+                case "results":
+                    res_limit = n
+                    break
+               
             }
         }]
+       
+
+    }
+
+  def filter(n) {
+        [that: {String sign->[of:{Integer v ->
+            switch (n){
+               case "hop":
+                    hop_limit = v
+                    break
+                case "star":
+                    star_limit = v 
+                    break
+            }
+
+            segno_filtro = sign
+            }]
+        }]
+    }
+
+    def asn = { String q ->
+        if (q.equals("on")) asn_on = true
+        if (q.equals("off")) asn_on = false
+    }
+
+     def coordinate = { String q ->
+        if (q.equals("on")) coordinate_on = true
+        if (q.equals("off")) coordinate_on = false
     }
     //limit 10 on measurements equivale a limit(10).on(measurements)
     String sCountry = null
@@ -185,7 +312,7 @@ class request {
     void obtain(String r){
         reqF = r
     }
-    synchronized String sendRequestWithCacheCheck(String url2, StringBuilder bres){
+    synchronized String sendRequestWithCacheCheck(String url2, StringBuilder bres){ // bres: contiene un StringBuilder per costruire il vettore di stringhe di risultati
         String res
         if (debug) println("creo thread")
         Cache c = new Cache(this)
@@ -196,11 +323,13 @@ class request {
                 c.setParam(url2,get.getInputStream(),bres)
                 if (debug) println("faccio partire thread")
                 c.start()
-                wait(wait*1000)
+               
+                    wait(wait_t*1000)
+              
                 if (!c.getDone()){
                     if (debug) println("file risultati per "+url2+" troppo grosso, interrompo")
                     c.interrupt()
-                    wait(wait*1000)
+                    wait(wait_t*1000)
                     if (c.getSave()){
                         res = bres.toString()
                     }
@@ -209,6 +338,7 @@ class request {
                 else{
                     if (debug) println("tutto ok")
                     res = bres.toString()
+                    // println("Sono in srwcc"+res)
                 }
             }
             else{
@@ -217,6 +347,35 @@ class request {
         }
         else res = bres.toString()
         return res
+    }
+
+    boolean comparazione(String segno,Integer valore1,Integer valore2){
+        switch(segno){
+            case "<":
+                return valore1<valore2?true:false
+                break
+            case "<=":
+                return valore1<=valore2?true:false
+                break
+            case ">":
+                return valore1>valore2?true:false
+                break
+            case ">=":
+                return valore1>=valore2?true:false
+                break
+            case "=": case "":case " ":
+                return valore1==valore2?true:false
+                break
+            case "!=":
+                return valore1!=valore2?true:false
+                break
+            default :
+                {
+                println("Segno non valido")
+                return true
+                }
+                
+        }
     }
 
     void getIps(LinkedList<?> p, String s){//recupera indirizzi e id delle probes che rispettano le specifiche
@@ -228,7 +387,7 @@ class request {
         String url2 = "https://atlas.ripe.net/api/v2/probes/?format=json&status_name=Connected"
         if (s.equals("source")){
             if ((sLat != 0 || sLon != 0) && sRad != 0) url2+= "&radius="+sLat+","+sLon+":"+sRad
-            else if (sCountry != null) url2+="&country_code="+sCountry
+            else if (sCountry != null) url2+="&country_code="+sCountry // il controllo sulle nazioni e` gia presente
             if (fromWhat.equals("anchors")) url2+="&is_anchor=true"
         }
         else if (s.equals("dest")){
@@ -238,15 +397,16 @@ class request {
         }
         if (debug) println(url2)
         res = sendRequestWithCacheCheck(url2,bres)
+        //println("sono in getIps"+res)
         if (res.equals("errore") || res.equals("")){
             return
         }
         def object = jsonSlurper.parseText(res)
         if (object.count != 0) {
             int count = 0
-            int limit
-            if (s.equals("source")) limit = source_limit
-            else limit = target_limit
+            int limit = object.count
+            if (s.equals("source")) {if(source_limit!=0)limit = source_limit}
+            else {if(target_limit!=0)limit = target_limit}
             while (count < limit){
                 for (int i = 0; i< object.results.size() && count < limit; i++){
                     if (!object.results[i].address_v4.equals(null)) {
@@ -285,7 +445,7 @@ class request {
                     object = jsonSlurper.parseText(res)
                 }
                 else {
-                    if (debug) println("numero risultati trovati per "+s+" minore del limite imposto")
+                    if (debug && (target_limit!=0 || source_limit!=0)) println("numero risultati trovati per "+s+" minore del limite imposto")
                     break
                 }
             }
@@ -304,6 +464,7 @@ class request {
         String res
         StringBuilder bres = new StringBuilder()
         ListIterator<String> ipIter
+        Integer count_tot = 0
         if (targetIps != null){ //do la precedenza ai targetIps se sono stati settati dall'utente
             ipIter = targetIps.listIterator()
         }
@@ -317,24 +478,50 @@ class request {
                 url2+="&is_oneoff=false"
             }
             if (type != null) url2+="&type="+type
-            if (time_start != 0) url2+="&start_time__gte="+time_start
-            if (time_stop != 0) url2+="&stop_time__lte="+time_stop
+
+            if (time_stop !=0) {
+                url2+="&start_time__lt="+time_stop // deve controllare anche i measurement che sono partiti prima di time_start
+                url2+="&status=Ongoing,Stopped"
+            }
+            //if (time_stop != 0) url2+="&stop_time__lte="+time_stop+"&stop_time__gte="+time_start // ma lo stop time deve essere comunque nell' interevallo
             res = sendRequestWithCacheCheck(url2,bres)
+            println("sono in getMeas: "+url2)
             if (res.equals("errore") || res.equals("")){
                 continue
             }
             def object = jsonSlurper.parseText(res)
+            if(debug)println("numero di Meas trovati in totale: "+object.count)
             if(object.count != 0){
                 int count = 0
-                while (count < meas_limit){
-                    for(int j = 0; j < object.results.size() && count < meas_limit;j++){
-                        measItems m = new measItems(object.results[j].id,object.results[j].start_time,object.results[j].target_ip)
-                        if (debug) println("adding id: "+object.results[j].id+" -- start_time: "+object.results[j].start_time)
-                        meas.add(m)
-                        count++
-                        if (debug) println("numMeas: "+(count))
-                    }
-                    if (count >= meas_limit) break
+                int limit = object.count
+                if(meas_limit!=0) {limit = meas_limit}
+                while (count < limit){
+                    for(int j = 0; j < object.results.size() && count < limit;j++){
+
+                          if(object.results[j].status.name == "Stopped" && time_start!=0 && time_stop!=0){  
+                                                      
+                                    if(object.results[j].stop_time >= time_start || object.results[j].status.when >= time_start){ // l'importante e` che il mesaurement si fermi dopo il time start
+                                        measItems m = new measItems(object.results[j].id,object.results[j].start_time,object.results[j].stop_time,object.results[j].target_ip,object.results[j].status.name)
+                                        if (debug) println("adding id: "+object.results[j].id+" -- start_time: "+object.results[j].start_time+" -- stop_time: "+object.results[j].stop_time+" -- status: "+object.results[j].status.name)
+                                        meas.add(m)
+                                        count++
+                                        count_tot++
+                                        if (debug) println("numMeas: "+(count))
+                                    }else{
+                                        if (debug) println("not adding id: "+object.results[j].id+" -- start_time: "+object.results[j].start_time+" -- stop_time: "+object.results[j].stop_time+" -- status: "+object.results[j].status.name)
+                                    }
+                                }
+                            else {
+                                measItems m = new measItems(object.results[j].id,object.results[j].start_time,object.results[j].stop_time,object.results[j].target_ip,object.results[j].status.name)
+                                if (debug) println("adding id: "+object.results[j].id+" -- start_time: "+object.results[j].start_time+" -- stop_time: "+object.results[j].stop_time+" -- status: "+object.results[j].status.name)
+                                meas.add(m)
+                                count++
+                                count_tot++
+                                if (debug) println("numMeas: "+(count))
+                            }
+                        }
+                    
+                    if (count >= limit) break
                     if (object.next != null){ //vado alla prossima pagina di risultati
                         bres = new StringBuilder()
                         url2 = object.next
@@ -342,12 +529,13 @@ class request {
                         object = jsonSlurper.parseText(res)
                     }
                     else {
-                        if (debug) println("numero di measurements trovati è inferiore al limite imposto")
+                        if (debug && meas_limit!=0)  println("numero di measurements trovati è inferiore al limite imposto")
                         break
                     }
                 }
             }
         }//get a measurement for each ip
+        if(debug) println("Measurement totali: "+count_tot)
     }
 
     Double getAvgPing(LinkedList<?> p, LinkedList<?> s) {
@@ -379,7 +567,7 @@ class request {
             }
             if (time_start != 0 && time_start > m.start_time) url2 = url2 + "&start=" + time_start
             else url2 = url2 + "&start=" + m.start_time
-            if (time_stop != 0 && time_stop > m.start_time) url2 = url2 + "&stop=" + time_stop
+           if (time_stop != 0 && time_stop > m.start_time) url2 = url2 + "&stop=" + time_stop
             else url2 = url2 + "&stop=" + (m.start_time+1)
             if (debug) println(url2)
             res = sendRequestWithCacheCheck(url2,bres)
@@ -389,19 +577,30 @@ class request {
             def object = jsonSlurper.parseText(res)
             if (debug) println(object.size())
             if(object.size() != 0){
-                for (int j = 0; j < object.size(); j++){
-                    while (sipsIt.hasNext()){
-                        sourceData tmp = sipsIt.next()
-                        if (Double.valueOf(object[j].avg) > 0) {
-                            tmpAvg.add( Double.valueOf(object[j].avg))
-                            if (debug) println("id of measurement: "+m.id+", result: "+Double.valueOf(object[j].avg))
+                 int count = 0
+                 int limit = object.size()
+                 if (res_limit!=0){
+                    if(limit>res_limit)
+                            limit = res_limit
+                       
+                 }
+                while(count< limit){
+                        for (int j = 0; j < object.size() && count < limit; j++){
+                            while (sipsIt.hasNext()){
+                                sourceData tmp = sipsIt.next()
+                                if (Double.valueOf(object[j].avg) > 0) {
+                                    tmpAvg.add( Double.valueOf(object[j].avg))
+                                    count++
+                                    if (debug) println("id of measurement: "+m.id+", result: "+Double.valueOf(object[j].avg))
+                                }
+                                break
+                            }
+                            sipsIt = s.listIterator()
                         }
-                        break
-                    }
-                    sipsIt = s.listIterator()
+                        if (!tmpAvg.isEmpty()) avgs.add(tmpAvg.average())
+                        tmpAvg.clear()
+                        if(count>=limit) break
                 }
-                if (!tmpAvg.isEmpty()) avgs.add(tmpAvg.average())
-                tmpAvg.clear()
             }
         }
         if (avgs.isEmpty()){
@@ -438,33 +637,217 @@ class request {
             }
             if (time_start != 0 && time_start > m.start_time) url2 = url2 + "&start=" + time_start
             else url2 = url2 + "&start=" + m.start_time
-            if (time_stop != 0 && time_stop > m.start_time) url2 = url2 + "&stop=" + time_stop
+             if (time_stop != 0 && time_stop > m.start_time) url2 = url2 + "&stop=" + time_stop
             else url2 = url2 + "&stop=" + (m.start_time+1)
             if (debug) println(url2)
             res = sendRequestWithCacheCheck(url2,bres)
+           // println("Sono dopo srwcc in PingList:"+res)
             if (res.equals("errore") || res.equals("")){
                 continue
             }
             def object = jsonSlurper.parseText(res)
-            if (debug) println(object.size())
+            if (debug) println("Size: "+object.size())
             if(object.size() != 0){
-                for (int j = 0; j < object.size(); j++){
-                    while (sipsIt.hasNext()){
-                        sourceData tmp = sipsIt.next()
-                        if (Double.valueOf(object[j].avg) > 0) {
-                            Date date = new Date((long)object[j].timestamp*1000)
-                            Calendar calendar = Calendar.getInstance()
-                            calendar.setTime(date)
-                            c.data.add((new pingList(""+calendar.get(calendar.DAY_OF_MONTH)+"/"+calendar.get(calendar.MONTH)+"/"+calendar.get(calendar.YEAR),object[j].avg)))
-                            if (debug) println("id of measurement: "+m.id+", result: "+Double.valueOf(object[j].avg))
+                int count = 0
+                int limit = object.size()
+                 if (res_limit!=0){
+                   if(limit>res_limit){ 
+                            limit = res_limit
+                   }
+                 }
+                while(count<limit){
+                    for (int j = 0; j < object.size() && count<limit; j++){
+                        while (sipsIt.hasNext()){
+                            sourceData tmp = sipsIt.next()
+                            if (Double.valueOf(object[j].avg) > 0) {
+                                Date date = new Date((long)object[j].timestamp*1000)
+                                
+                                Calendar calendar = Calendar.getInstance()
+                                calendar.setTime(date)
+                                int mese = calendar.get(calendar.MONTH)+1
+                                c.data.add((new pingList(""+calendar.get(calendar.DAY_OF_MONTH)+"/"+mese+"/"+calendar.get(calendar.YEAR),object[j].avg)))
+                                count++
+                                if (debug) println("id of measurement: "+m.id+", result: "+Double.valueOf(object[j].avg))
+                            }
+                            break
                         }
-                        break
+                        sipsIt = s.listIterator()
                     }
-                    sipsIt = s.listIterator()
+                    if(count>=limit) break
                 }
             }
         }
     }
+
+   void getTracerouteList(LinkedList<?> p, LinkedList<?> s, containerT c){ // agigustare il limit result
+        if (p.isEmpty()){
+            if (debug) println("Non ci sono measurements")
+            return
+        }
+        if (s.isEmpty()){
+            if (debug) println("Non ci sono ip di probe source")
+            return
+        }
+        if (debug) println("start of results")
+        StringBuilder bres
+        String res
+        ListIterator<measItems> measIt = p.listIterator()
+        ListIterator<sourceData> sipsIt = s.listIterator()
+ 
+        def jsonSlurper = new JsonSlurper()
+        for (int i = 0; i < p.size(); i++){
+            bres = new StringBuilder()
+            measItems m = measIt.next()
+            String url2 = "https://atlas.ripe.net/api/v2/measurements/"+m.id+"/results/?format=json&probe_ids="
+            sipsIt = s.listIterator()
+            while (sipsIt.hasNext()){
+                sourceData tmp = sipsIt.next()
+                url2+=tmp.id
+                if (sipsIt.hasNext()) url2+=","
+            }
+            if (time_start != 0 && time_start > m.start_time) url2 = url2 + "&start=" + time_start
+            else url2 = url2 + "&start=" + m.start_time
+             if (time_stop != 0 && time_stop > m.start_time) url2 = url2 + "&stop=" + time_stop
+            else url2 = url2 + "&stop=" + (m.start_time+1)
+            if (debug) println(url2)
+            res = sendRequestWithCacheCheck(url2,bres)
+        
+            if (res.equals("errore") || res.equals("")){
+                continue
+            }
+            def object = jsonSlurper.parseText(res)
+            if (debug) println("Size: "+object.size())
+             if(object.size() != 0){
+                int count = 0
+                int limit = object.size()
+                if (res_limit!=0){
+                   if(limit>res_limit)
+                        limit = res_limit
+                } 
+                
+                    for (int j = 0; j < object.size() && count<limit; j++){
+                        while (sipsIt.hasNext()){
+                            sourceData tmp = sipsIt.next()
+                            int count_star = 0
+                            int asn
+                            Double lat
+                            Double lon
+                            boolean star = false
+                            List<hop> lista_hop = new LinkedList<>()
+
+
+                            if(hop_limit>=0 && !comparazione(segno_filtro,object[j].result.size(),hop_limit)){
+                                if(debug) println("Il numero di hop non rispetta il filtraggio richiesto :"+object[j].result.size())
+                                break
+                            }
+
+                            for(int k = 0;k<object[j].result.size();k++){
+                                List<responseTrace> risposte = new LinkedList<>()
+                                star = false
+                                for(int l = 0;l<3;l++){
+                                    if(object[j].result[k].result[l].x != null){
+                                        risposte.add(new responseTrace(object[j].result[k].result[l].x))
+                                        if(star_limit>=0 || asn_on || coordinate_on) star = true
+                                    } else
+                                    {
+                                        risposte.add(new responseTrace(object[j].result[k].result[l].from,object[j].result[k].result[l].ttl,object[j].result[k].result[l].size,object[j].result[k].result[l].rtt))
+                                    }
+                                }
+                                if(star_limit>=0 && star == true){
+                                    count_star++
+                                } 
+
+                               if(!star && asn_on){
+                                    StringBuilder bres2 = new StringBuilder()
+                                    String urlAS = "https://stat.ripe.net/data/prefix-overview/data.json?resource="+object[j].result[k].result[0].from
+                                    String res_as = sendRequestWithCacheCheck(urlAS,bres2)
+                                    if(res_as.equals("errore")||res_as.equals(""))
+                                       asn = -2
+                                    else{
+                                        def asn_obj = jsonSlurper.parseText(res_as)
+                                        String str_tmp = asn_obj.data.asns.asn
+                                        if(str_tmp.equals("[]")){
+                                            asn = -1
+                                        } else{
+                                            str_tmp = str_tmp.replace('[','')
+                                            str_tmp = str_tmp.replace(']','')
+                                            asn = Integer.parseInt(str_tmp)
+                                        }
+                                    }
+                                    
+                                }
+
+                                if(!star && coordinate_on){
+                                    StringBuilder bres2 = new StringBuilder()
+                                    String urlCOOR ="https://stat.ripe.net/data/maxmind-geo-lite/data.json?resource="+object[j].result[k].result[0].from
+                                    String res_coor = sendRequestWithCacheCheck(urlCOOR,bres2)
+                                    if(res_coor.equals("errore")||res_coor.equals("")){
+                                        lat = Double.NaN 
+                                        lon = Double.NaN
+                                    }
+                                    else{                                    
+                                        def coor_obj = jsonSlurper.parseText(res_coor)
+                                        String str_tmp = coor_obj.data.located_resources.locations.longitude
+                                        if(str_tmp.equals("[]")){
+                                            lon = Double.NaN
+                                        }else{
+                                            str_tmp = str_tmp.replace('[','')
+                                            str_tmp = str_tmp.replace('[','')
+                                            str_tmp = str_tmp.replace(']','')
+                                            str_tmp = str_tmp.replace(']','')
+                                            lon = Double.parseDouble(str_tmp)
+                                        }
+                                        
+                                        str_tmp = coor_obj.data.located_resources.locations.latitude
+                                        if(str_tmp.equals("[]")){
+                                            lon = Double.NaN
+                                        }else{
+                                            str_tmp = str_tmp.replace('[','')
+                                            str_tmp = str_tmp.replace('[','')
+                                            str_tmp = str_tmp.replace(']','')
+                                            str_tmp = str_tmp.replace(']','')
+                                            lat = Double.parseDouble(str_tmp)
+                                        }
+                                    }
+                                    
+                                }
+
+                               
+                                
+                                if(coordinate_on && asn_on && !Double.isNaN(lat) && !Double.isNaN(lon) && asn != -2) 
+                                    lista_hop.add(new hop(object[j].result[k].hop,risposte,asn,lon,lat))
+                                else if(coordinate_on && !asn_on  && !Double.isNaN(lat) && !Double.isNaN(lon))
+                                    lista_hop.add(new hop(object[j].result[k].hop,risposte,lon,lat))
+                                else if(!coordinate_on && asn_on && asn != -2)
+                                    lista_hop.add(new hop(object[j].result[k].hop,risposte,asn))
+                                else            
+                                    lista_hop.add(new hop(object[j].result[k].hop,risposte))
+
+                            }
+
+                            if(!comparazione(segno_filtro,count_star,star_limit) && star_limit>=0){
+                                if(debug)println("Il numero di star non rispetta il filtraggio richiesto :"+count_star)
+                                break
+                            } 
+
+                            count++
+                            Date date = new Date((long)object[j].timestamp*1000)
+                            Calendar calendar = Calendar.getInstance()
+                            calendar.setTime(date)
+                            int mese = calendar.get(calendar.MONTH)+1
+                            c.data.add((new tracerouteList(""+calendar.get(calendar.DAY_OF_MONTH)+"/"+calendar.get(calendar.MONTH+1)+"/"+calendar.get(calendar.YEAR),object[j].src_addr,object[j].dst_addr,lista_hop)))
+                            if (debug) println("id of measurement: "+m.id)
+                            break
+                        }
+                        sipsIt = s.listIterator()
+                       
+                        if(count>=limit)break
+                    }
+                
+            }
+        }
+    }
+    
 
     void id(int i){
         id = i
@@ -488,7 +871,7 @@ class request {
             getMeas(measIds, destProbesIps, "ping")
             container c = new container()
             getPingList(measIds, sourceProbesIps, c)
-            FileWriter f = new FileWriter("results.txt", true)
+            FileWriter f = new FileWriter("resultsPing_list.txt", true) // semplice salvataggio dei risultati in file diversi o aggiungere separatori per le varie misurazioni e tipologie
             String towrite = JsonOutput.toJson(c.data)
             f.write(towrite)
             f.close()
@@ -499,8 +882,21 @@ class request {
             if (debug) println("sources")
             getIps(sourceProbesIps, "source")
             getMeas(measIds, destProbesIps, null)
-            FileWriter f = new FileWriter("results.txt", true)
+            FileWriter f = new FileWriter("resultsmeasuremnt_list.txt", true)
             String towrite = JsonOutput.toJson(measIds)
+            f.write(towrite)
+            f.close()
+        } else if (reqF.equals("traceroute_list")){
+            if (debug) println("targets")
+            getIps(destProbesIps, "dest")
+            if (debug) println("sources")
+            getIps(sourceProbesIps, "source")
+            getMeas(measIds, destProbesIps, "traceroute")
+            containerT c = new containerT()
+            getTracerouteList(measIds, sourceProbesIps, c)
+            FileWriter f = new FileWriter("resultsTraceroute_list.txt", true)
+            def generator = new JsonGenerator.Options().excludeNulls().build()
+            String towrite = generator.toJson(c.data)
             f.write(towrite)
             f.close()
         }

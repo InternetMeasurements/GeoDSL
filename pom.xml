@@ -32,7 +32,7 @@
                 <executions>
                     <execution>
                         <goals>
-                            <goal>execute</goal>
+                            <goal>compile</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -46,7 +46,7 @@
                 </dependencies>
                 <configuration>
                     <scripts>
-                        <script>src/main/groovy/it.unipi.DSL.Main.groovy</script>
+                        <script>src/main/groovy/it.unipi.Main.DSL</script>
                     </scripts>
                 </configuration>
             </plugin>
