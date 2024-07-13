@@ -1,0 +1,35 @@
+[
+    {"data":"26/34/2023","ipsource":"217.29.76.27","iptarget":"213.9.97.164","list_route":[
+        {"hop":1,"asn":16004,"lon":12.1097,"lat":43.1479,"risposte":[
+            {"ipresponse":"217.29.76.253","ttl":255.0,"size":28,"rtt":0.788},
+            {"ipresponse":"217.29.76.253","ttl":255.0,"size":28,"rtt":0.574},
+            {"ipresponse":"217.29.76.253","ttl":255.0,"size":28,"rtt":0.62}]
+        },
+        {"hop":2,"asn":-1,"lon":12.1097,"lat":43.1479,"risposte":[
+            {"ipresponse":"217.29.66.39","ttl":254.0,"size":28,"rtt":0.98},
+            {"ipresponse":"217.29.66.39","ttl":254.0,"size":28,"rtt":0.929},
+            {"ipresponse":"217.29.66.39","ttl":254.0,"size":28,"rtt":2.643}]
+        },
+        {"hop":3,"asn":1299,"lon":2.3387,"lat":48.8582,"risposte":[
+            {"ipresponse":"80.239.135.52","ttl":253.0,"size":68,"rtt":1.324},
+            {"ipresponse":"80.239.135.52","ttl":253.0,"size":68,"rtt":1.26},
+            {"ipresponse":"80.239.135.52","ttl":253.0,"size":68,"rtt":1.146}]
+        },
+        {"hop":4,"asn":1299,"lon":18.056,"lat":59.3247,"risposte":[
+            {"ipresponse":"62.115.116.170","ttl":250.0,"size":140,"rtt":9.966},
+            {"ipresponse":"62.115.116.170","ttl":250.0,"size":140,"rtt":10.391},
+            {"ipresponse":"62.115.116.170","ttl":250.0,"size":140,"rtt":10.201}
+            ]
+        },
+        {"hop":5,"asn":1299,"lon":18.056,"lat":59.3247,"risposte":[
+            {"ipresponse":"62.115.135.151","ttl":60.0,"size":76,"rtt":13.232},
+            {"ipresponse":"62.115.135.151","ttl":60.0,"size":76,"rtt":13.354},
+            {"ipresponse":"62.115.135.151","ttl":60.0,"size":76,"rtt":13.209}]
+        },
+        {"hop":6,"asn":1299,"lon":18.056,"lat":59.3247,"risposte":[
+            {"ipresponse":"62.115.169.39","ttl":249.0,"size":28,"rtt":13.32},
+            {"ipresponse":"62.115.169.39","ttl":249.0,"size":28,"rtt":13.077},
+            {"ipresponse":"62.115.169.39","ttl":249.0,"size":28,"rtt":13.029}]
+        },
+            {"hop":7,"asn":12676,"lon":9.491,"lat":51.2993,"risposte":[{"ipresponse":"212.46.96.242","ttl":57.0,"size":28,"rtt":16.765},{"ipresponse":"212.46.96.242","ttl":57.0,"size":28,"rtt":13.999},{"ipresponse":"212.46.96.242","ttl":57.0,"size":28,"rtt":14.027}]},{"hop":8,"asn":12676,"lon":8.3403,"lat":51.6775,"risposte":[{"ipresponse":"213.9.97.164","ttl":56.0,"size":48,"rtt":13.132},{"ipresponse":"213.9.97.164","ttl":56.0,"size":48,"rtt":13.186},{"ipresponse":"213.9.97.164","ttl":56.0,"size":48,"rtt":13.147}]}]},{"data":"26/34/2023","ipsource":"217.29.76.27","iptarget":"213.9.97.164","list_route":[{"hop":1,"asn":16004,"lon":12.1097,"lat":43.1479,"risposte":[{"ipresponse":"217.29.76.253","ttl":255.0,"size":28,"rtt":4.05},{"ipresponse":"217.29.76.253","ttl":255.0,"size":28,"rtt":1.014},{"ipresponse":"217.29.76.253","ttl":255.0,"size":28,"rtt":0.798}]},{"hop":2,"asn":-1,"lon":12.1097,"lat":43.1479,"risposte":[{"ipresponse":"217.29.66.39","ttl":254.0,"size":28,"rtt":0.913},{"ipresponse":"217.29.66.39","ttl":254.0,"size":28,"rtt":1.181},{"ipresponse":"217.29.66.39","ttl":254.0,"size":28,"rtt":0.935}]},{"hop":3,"asn":1299,"lon":2.3387,"lat":48.8582,"risposte":[{"ipresponse":"80.239.135.52","ttl":253.0,"size":68,"rtt":1.383},{"ipresponse":"80.239.135.52","ttl":253.0,"size":68,"rtt":1.818},{"ipresponse":"80.239.135.52","ttl":253.0,"size":68,"rtt":1.773}]},{"hop":4,"asn":1299,"lon":18.056,"lat":59.3247,"risposte":[{"ipresponse":"62.115.116.170","ttl":250.0,"size":140,"rtt":10.369},{"ipresponse":"62.115.116.170","ttl":250.0,"size":140,"rtt":10.124},{"ipresponse":"62.115.116.170","ttl":250.0,"size":140,"rtt":10.107}]},{"hop":5,"asn":1299,"lon":18.056,"lat":59.3247,"risposte":[{"ipresponse":"62.115.135.151","ttl":60.0,"size":76,"rtt":13.362},{"ipresponse":"62.115.135.151","ttl":60.0,"size":76,"rtt":13.471},{"ipresponse":"62.115.135.151","ttl":60.0,"size":76,"rtt":13.531}]},{"hop":6,"asn":1299,"lon":18.056,"lat":59.3247,"risposte":[{"ipresponse":"62.115.169.39","ttl":249.0,"size":28,"rtt":13.449},{"ipresponse":"62.115.169.39","ttl":249.0,"size":28,"rtt":13.402},{"ipresponse":"62.115.169.39","ttl":249.0,"size":28,"rtt":13.375}]},{"hop":7,"asn":12676,"lon":9.491,"lat":51.2993,"risposte":[{"ipresponse":"212.46.96.242","ttl":57.0,"size":28,"rtt":13.649},{"ipresponse":"212.46.96.242","ttl":57.0,"size":28,"rtt":14.433},{"ipresponse":"212.46.96.242","ttl":57.0,"size":28,"rtt":14.937}]},{"hop":8,"asn":12676,"lon":8.3403,"lat":51.6775,"risposte":[{"ipresponse":"213.9.97.164","ttl":56.0,"size":48,"rtt":13.143},{"ipresponse":"213.9.97.164","ttl":56.0,"size":48,"rtt":23.02},{"ipresponse":"213.9.97.164","ttl":56.0,"size":48,"rtt":24.625}]}]}
+]
