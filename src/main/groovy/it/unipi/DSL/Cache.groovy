@@ -206,7 +206,7 @@ class Cache extends Thread{
         if (r.getModule() == "Caida") {
             done = false
             hit = false
-            def hashtext = hashGen("/mnt/c/Users/giuli/OneDrive/Desktop/GeoDSL-main/src/main/groovy/it/unipi/DSL/script.txt")
+            def hashtext = hashGen("script.txt")
             if (hashtext == null) 
                 throw new Exception("Error generating hash")
 
