@@ -1,4 +1,24 @@
-RIPEAtlas {
+Caida {
+    obtain traceroute_list
+    from probes
+    to probes
+    limit 1 on measurements 
+    limit 1 on sources
+    limit 1000 on results
+    filter star that "<=" of 0
+    coordinate on
+    asn on 
+    source_country "DE"
+    target_country "IT" 
+    verbose on
+    cache on
+    timeframe "2023-02-05 00:00:00",start
+    timeframe "2023-02-06 00:00:00",stop
+
+    execute()
+}
+
+/*RIPEAtlas {
     obtain ping_list
     from anchors
     to anchors
@@ -19,11 +39,7 @@ RIPEAtlas {
     execute()
 }
 
-
-
-
-
-/*RIPEAtlas {
+RIPEAtlas {
     obtain traceroute_list
     from anchors
     to anchors
@@ -39,5 +55,26 @@ RIPEAtlas {
     cache off
     timeframe "2022-01-01 00:00:00",start
     timeframe "2022-05-30 00:00:00",stop
+    execute()
+}
+
+
+Caida {
+    obtain traceroute_list
+    from probes
+    to probes
+    limit 1 on measurements 
+    limit 1 on sources
+    limit 1000 on results
+    filter star that "<=" of 0
+    coordinate on
+    asn on 
+    source_country "DE"
+    target_country "IT" 
+    verbose on
+    cache off
+    timeframe "2023-02-05 00:00:00",start
+    timeframe "2023-02-06 00:00:00",stop
+
     execute()
 }*/

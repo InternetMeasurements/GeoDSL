@@ -4,9 +4,15 @@ import groovy.json.JsonOutput
 import groovy.json.JsonGenerator
 import groovy.json.JsonSlurper
 import java.text.SimpleDateFormat
+import it.unipi.DSL.Parser.*
+import it.unipi.DSL.Network.*
+
 
 
 class request {
+
+    // test
+    String module = ""
 
     boolean isCacheOn(){
         return cache_on
@@ -196,7 +202,8 @@ class request {
     int res_limit = 0 
     int star_limit = -1
     int hop_limit = -1
-    String segno_filtro = ""
+    String filtro_hop = ""
+    String filtro_star = ""
     //raggio e coordinate di source e target
     Integer dRad = 0
     Integer sRad = 0
@@ -206,10 +213,24 @@ class request {
     Double dLon = 0
     BigDecimal time_start = 0
     BigDecimal time_stop = 0
+    // caida 
+    String start_date = ""
+    String end_date = ""
+
+
     boolean asn_on = false
     boolean coordinate_on = false
     String reqF = "" //operazione da eseguire sui dati
     boolean error = false
+    
+    void setModule(String m) {
+        module = m
+    }
+
+    String getModule() {
+        return module
+    }
+
     def from = {what ->
         fromWhat = what
 
@@ -245,13 +266,13 @@ class request {
             switch (n){
                case "hop":
                     hop_limit = v
+                    filtro_hop = sign
                     break
                 case "star":
                     star_limit = v 
+                    filtro_star = sign
                     break
             }
-
-            segno_filtro = sign
             }]
         }]
     }
@@ -288,7 +309,7 @@ class request {
         if (sLat != 0 || sLon != 0){
             println("Warning: source_coordinates ha precedenza su source_country")
         }
-            sCountry = c
+        sCountry = c
     }
     def target_country = { String c ->
         if (dLat != 0 || dLon != 0){
@@ -297,16 +318,21 @@ class request {
         dCountry = c
     }
     void timeframe (String t, String f){
-        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-        Date date = format.parse(t)
-        long timestamp = date.getTime()
-        switch (f){
-            case "start":
-                time_start = timestamp/1000
-                break
-            case "stop":
-                time_stop = timestamp/1000
-                break
+        if (module.equals("Caida")) {
+            start_date = t
+            end_date = t
+        } else if (module.equals("RIPEAtlas")) {
+            SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+            Date date = format.parse(t)
+            long timestamp = date.getTime()
+            switch (f){
+                case "start":
+                    time_start = timestamp/1000
+                    break
+                case "stop":
+                    time_stop = timestamp/1000
+                    break
+            }
         }
     }
     void obtain(String r){
@@ -736,7 +762,7 @@ class request {
                             List<hop> lista_hop = new LinkedList<>()
 
 
-                            if(hop_limit>=0 && !comparazione(segno_filtro,object[j].result.size(),hop_limit)){
+                            if(hop_limit>=0 && !comparazione(filtro_hop,object[j].result.size(),hop_limit)){
                                 if(debug) println("Il numero di hop non rispetta il filtraggio richiesto :"+object[j].result.size())
                                 break
                             }
@@ -825,7 +851,7 @@ class request {
 
                             }
 
-                            if(!comparazione(segno_filtro,count_star,star_limit) && star_limit>=0){
+                            if(!comparazione(filtro_star,count_star,star_limit) && star_limit>=0){
                                 if(debug)println("Il numero di star non rispetta il filtraggio richiesto :"+count_star)
                                 break
                             } 
@@ -853,54 +879,106 @@ class request {
         id = i
     }
     def execute = {
-        if (reqF.equals("avg_ping")){
-            Double result
-            if (debug) println("targets")
-            getIps(destProbesIps, "dest")
-            if (debug) println("sources")
-            getIps(sourceProbesIps, "source")
-            getMeas(measIds, destProbesIps, "ping")
-            result = getAvgPing(measIds, sourceProbesIps)
-            println("fine: "+result)
+
+        if (module == "RIPEAtlas") {
+            if (reqF.equals("avg_ping")){
+                Double result
+                if (debug) println("targets")
+                getIps(destProbesIps, "dest")
+                if (debug) println("sources")
+                getIps(sourceProbesIps, "source")
+                getMeas(measIds, destProbesIps, "ping")
+                result = getAvgPing(measIds, sourceProbesIps)
+                println("fine: "+result)
+            }
+            else if (reqF.equals("ping_list")){
+                if (debug) println("targets")
+                getIps(destProbesIps, "dest")
+                if (debug) println("sources")
+                getIps(sourceProbesIps, "source")
+                getMeas(measIds, destProbesIps, "ping")
+                container c = new container()
+                getPingList(measIds, sourceProbesIps, c)
+                FileWriter f = new FileWriter("resultsPing_list.txt", true) // semplice salvataggio dei risultati in file diversi o aggiungere separatori per le varie misurazioni e tipologie
+                String towrite = JsonOutput.toJson(c.data)
+                f.write(towrite)
+                f.close()
+            }
+            else if (reqF.equals("measurement_list")){
+                if (debug) println("targets")
+                getIps(destProbesIps, "dest")
+                if (debug) println("sources")
+                getIps(sourceProbesIps, "source")
+                getMeas(measIds, destProbesIps, null)
+                FileWriter f = new FileWriter("resultsmeasuremnt_list.txt", true)
+                String towrite = JsonOutput.toJson(measIds)
+                f.write(towrite)
+                f.close()
+            } else if (reqF.equals("traceroute_list")){
+                if (debug) println("targets")
+                getIps(destProbesIps, "dest")
+                if (debug) println("sources")
+                getIps(sourceProbesIps, "source")
+                getMeas(measIds, destProbesIps, "traceroute")
+                containerT c = new containerT()
+                getTracerouteList(measIds, sourceProbesIps, c)
+                FileWriter f = new FileWriter("resultsTraceroute_list.txt", true)
+                def generator = new JsonGenerator.Options().excludeNulls().build()
+                String towrite = generator.toJson(c.data)
+                f.write(towrite)
+                f.close()
+            }
         }
-        else if (reqF.equals("ping_list")){
-            if (debug) println("targets")
-            getIps(destProbesIps, "dest")
-            if (debug) println("sources")
-            getIps(sourceProbesIps, "source")
-            getMeas(measIds, destProbesIps, "ping")
-            container c = new container()
-            getPingList(measIds, sourceProbesIps, c)
-            FileWriter f = new FileWriter("resultsPing_list.txt", true) // semplice salvataggio dei risultati in file diversi o aggiungere separatori per le varie misurazioni e tipologie
-            String towrite = JsonOutput.toJson(c.data)
-            f.write(towrite)
-            f.close()
-        }
-        else if (reqF.equals("measurement_list")){
-            if (debug) println("targets")
-            getIps(destProbesIps, "dest")
-            if (debug) println("sources")
-            getIps(sourceProbesIps, "source")
-            getMeas(measIds, destProbesIps, null)
-            FileWriter f = new FileWriter("resultsmeasuremnt_list.txt", true)
-            String towrite = JsonOutput.toJson(measIds)
-            f.write(towrite)
-            f.close()
-        } else if (reqF.equals("traceroute_list")){
-            if (debug) println("targets")
-            getIps(destProbesIps, "dest")
-            if (debug) println("sources")
-            getIps(sourceProbesIps, "source")
-            getMeas(measIds, destProbesIps, "traceroute")
-            containerT c = new containerT()
-            getTracerouteList(measIds, sourceProbesIps, c)
-            FileWriter f = new FileWriter("resultsTraceroute_list.txt", true)
-            def generator = new JsonGenerator.Options().excludeNulls().build()
-            String towrite = generator.toJson(c.data)
-            f.write(towrite)
-            f.close()
+
+        if (module == "Caida") {
+            if (!reqF.equals("traceroute_list") && !reqF.equals("rtt_calculation")) {
+                print("Error: Operazione non valida per il modulo Caida.")
+                return
+            }
+
+            if (!toWhat.equals("probes") || !fromWhat.equals("probes")) {
+                print("Warning: Caida consente operazioni soltanto su probes.\n")
+                toWhat = "probes"
+                fromWhat = "probes"
+            }
+
+            if (!addr.equals("IPv4")) {
+                print("Warning: Caida consente operazioni soltanto su IPv4.\n")
+                addr = "IPv4"
+            }
+
+            def net = new Network()
+            def par = new Parser()
+            def c = new Cache(this)
+            c.start()
+            c.join(1000)
+            
+            if (c.getHit()) {
+                if(debug) println("Risultato trovato in cache, lo carico")
+                def f = new File("IPv4/"+reqF+".json")
+                if (f.exists()) {
+                    if (debug) println("Risultato caricato correttamente")
+                } else {
+                    if (debug) println("Errore nel caricamento del risultato")
+                }
+                // il thread di cache termina in automatico l'esecuzione
+                return
+            } else {
+                net.dataHttpRequest(start_date, end_date, sCountry, debug, meas_limit)
+                double[] sCoord = [sLat, sLon]
+                double[] dCoord = [dLat, dLon]
+                par.collector(debug, coordinate_on, asn_on, 
+                res_limit, hop_limit, star_limit, 
+                source_limit, target_limit,
+                filtro_hop, filtro_star, dCountry, sCountry, 
+                sRad, dRad, 
+                sCoord, dCoord, reqF)
+
+                c.notifyCreated() // si usa il meccanismo di notifica per indicare che il file è stato creato
+                // a questo punto si termina l'esecuzione del thread di cache.
+                c.join()
+            }
         }
     }
-
 }
 

@@ -1,12 +1,38 @@
 package it.unipi.DSL
 
 import org.junit.runner.Request
-
+import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.locks.Condition
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
 import java.nio.CharBuffer
 import java.security.MessageDigest
 
 class Cache extends Thread{
     boolean done
+    // caida
+    boolean hit
+    ReentrantLock lock = new ReentrantLock()
+    Condition created = lock.newCondition()
+    
+    def waitUntilCreated(File file) {
+        lock.lock()
+        while (!file.exists()) {
+            created.await()
+        }
+    }
+
+    def notifyCreated() {
+        lock.lock()
+        try {
+            created.signalAll()
+        } finally {
+            lock.unlock()
+        }
+    }
+    
+    //
+
     request r
     boolean getDone(){
         return done
@@ -146,9 +172,25 @@ class Cache extends Thread{
     }
 
 
+    // caida caching submodule
+    String hashGen(String path) {
+        def query = new File(path).text
+        def sortedText = query.split("\n").sort().join("\n")    
+        MessageDigest md = MessageDigest.getInstance("MD5")
+        md.update(sortedText.getBytes("UTF-8"))
+        byte[] digest = md.digest()
+        BigInteger bigInt = new BigInteger(1, digest)
+        return bigInt.toString(16)
+    }
+
+    def getHit() {
+        return hit
+    }
+
 
     void run(){ //metodo necessario per la gestione della cache come thread
 
+        if (r.getModule() == "RIPEAtlas") {
             done = false
             if(r.isDebugOn()) println("sono in run");
             sendRequest(url,is,sb)
@@ -159,10 +201,48 @@ class Cache extends Thread{
                 r.notify()
             }
             return
+        }
 
+        if (r.getModule() == "Caida") {
+            done = false
+            hit = false
+            def hashtext = hashGen("script.txt")
+            if (hashtext == null) 
+                throw new Exception("Error generating hash")
 
+            File cacheFile = new File("./cache/" + hashtext + ".json")
+            if (cacheFile.exists()) {
+                if (r.isDebugOn()) println("Cache hit")
+                File inputFile = new File("IPv4/"+r.reqF+".json")
+                inputFile.createNewFile()
+                def writer = new FileWriter(inputFile)
+                def jres = new JsonSlurper().parseText(cacheFile.text)
+                writer.write(JsonOutput.prettyPrint(JsonOutput.toJson(jres)))
+                writer.close()
+                hit = true
+                done = true
+                print("Risultato caricato dalla cache.")
 
+            } else {
+                if (r.isDebugOn()) println("Cache miss")
 
+                if (r.isDebugOn()) println("Creo il file cache")
+                cacheFile.createNewFile()
+
+                File inputFile = new File("IPv4/"+r.reqF+".json")
+
+                waitUntilCreated(inputFile)
+                def writer = new FileWriter(cacheFile)
+                def jres = new JsonSlurper().parseText(inputFile.text)
+                writer.write(JsonOutput.prettyPrint(JsonOutput.toJson(jres)))
+                writer.close()
+                
+                if (r.isDebugOn()) println("Risultato cachato.")
+                hit = false
+                done = true
+            }
+            return
+        }   
     }
 }
 

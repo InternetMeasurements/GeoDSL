@@ -1,5 +1,6 @@
 package it.unipi.DSL
 class defs{
+    final String rtt_calculation = "rtt_calculation"
     final String avg_ping = "avg_ping"
     final String traceroute_list = "traceroute_list"
     final String one_off = "one_off"
